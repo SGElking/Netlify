@@ -4,7 +4,7 @@
       <div class="nav-container">
         <h1>项目管理</h1>
         <div class="nav-links">
-          <router-link to="/dashboard">仪表板</router-link>
+          <router-link to="/dashboard" class="nav-link" @click="handleNavClick">仪表板</router-link>
           <button @click="handleSignOut" class="logout-btn">退出登录</button>
         </div>
       </div>
@@ -28,6 +28,10 @@ const handleSignOut = async () => {
   } catch (error) {
     console.error('退出登录失败:', error.message)
   }
+}
+
+const handleNavClick = () => {
+  console.log('导航链接被点击')
 }
 </script>
 
@@ -71,10 +75,16 @@ body {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   transition: background-color 0.3s;
+  cursor: pointer;
+  display: inline-block;
 }
 
 .nav-links a:hover {
   background-color: rgba(255,255,255,0.1);
+}
+
+.nav-links a.router-link-active {
+  background-color: rgba(255,255,255,0.2);
 }
 
 .logout-btn {

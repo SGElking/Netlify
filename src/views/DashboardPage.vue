@@ -73,6 +73,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { supabase } from '../supabase.js'
+import { useAuthStore } from '../stores/auth.js'
 
 const projects = ref([])
 const isLoading = ref(false)
@@ -90,9 +91,15 @@ const newProject = reactive({
 const fetchProjects = async () => {
   isLoading.value = true
   try {
+    const authStore = useAuthStore()
+    if (!authStore.user) {
+      throw new Error('用户未登录')
+    }
+    
     const { data, error } = await supabase
       .from('projects')
       .select('*')
+      .eq('user_id', authStore.user.id)
       .order('created_at', { ascending: false })
     
     if (error) throw error
@@ -110,15 +117,32 @@ const fetchProjects = async () => {
 const createProject = async () => {
   isCreating.value = true
   try {
+    const authStore = useAuthStore()
+    if (!authStore.user) {
+      throw new Error('用户未登录')
+    }
+    
+    // 确保用户profile存在（即使创建失败也继续）
+    if (!authStore.profile) {
+      await authStore.fetchUserProfile(authStore.user.id)
+    }
+    
     const { data, error } = await supabase
       .from('projects')
       .insert([{
-        name: newProject.name,
+        user_id: authStore.user.id, // profiles.id 与 auth.users.id 相同
+        title: newProject.name,
         description: newProject.description
       }])
       .select()
     
-    if (error) throw error
+    if (error) {
+      // 如果是RLS策略错误，提供解决方案
+      if (error.message.includes('row-level security') || error.message.includes('RLS')) {
+        throw new Error('数据库权限限制。请在Supabase中为projects表设置适当的RLS策略，或暂时禁用RLS进行测试。')
+      }
+      throw error
+    }
     
     // 添加到项目列表
     projects.value.unshift(data[0])
@@ -133,7 +157,13 @@ const createProject = async () => {
   } catch (error) {
     console.error('创建项目失败:', error)
     isError.value = true
-    message.value = '创建项目失败: ' + error.message
+    
+    // 提供更详细的错误信息
+    if (error.message.includes('foreign key constraint')) {
+      message.value = '创建项目失败: 用户资料不存在。请确保数据库中的profiles表已正确创建。解决方案：1) 执行SQL创建表 2) 重新注册用户 3) 检查RLS策略'
+    } else {
+      message.value = '创建项目失败: ' + error.message
+    }
   } finally {
     isCreating.value = false
   }

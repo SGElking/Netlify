@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
-// 路由组件
-const AuthPage = () => import('../views/AuthPage.vue')
-const DashboardPage = () => import('../views/DashboardPage.vue')
-const ProjectDetailPage = () => import('../views/ProjectDetailPage.vue')
+// 路由组件 - 直接导入
+import AuthPage from '../views/AuthPage.vue'
+import DashboardPage from '../views/DashboardPage.vue'
+import ProjectDetailPage from '../views/ProjectDetailPage.vue'
 
 const routes = [
   {
@@ -39,15 +39,23 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   
-  // 初始化认证状态
-  await authStore.initAuth()
-  
-  if (to.meta.requiresAuth && !authStore.user) {
+  try {
+    // 初始化认证状态
+    await authStore.initAuth()
+    
+    // 等待认证状态稳定
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    if (to.meta.requiresAuth && !authStore.user) {
+      next('/auth')
+    } else if (to.path === '/auth' && authStore.user) {
+      next('/dashboard')
+    } else {
+      next()
+    }
+  } catch (error) {
+    console.error('路由守卫错误:', error)
     next('/auth')
-  } else if (to.path === '/auth' && authStore.user) {
-    next('/dashboard')
-  } else {
-    next()
   }
 })
 

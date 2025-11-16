@@ -46,7 +46,6 @@
             <label for="taskStatus">状态</label>
             <select id="taskStatus" v-model="newTask.status">
               <option value="pending">待处理</option>
-              <option value="in-progress">进行中</option>
               <option value="completed">已完成</option>
             </select>
           </div>
@@ -72,7 +71,7 @@
           v-for="task in tasks"
           :key="task.id"
           class="task-item"
-          :class="getStatusClass(task.status)"
+          :class="getStatusClass(task.is_complete)"
         >
           <div class="task-content">
             <div class="task-header">
@@ -86,8 +85,8 @@
             <p class="task-description">{{ task.description || '暂无描述' }}</p>
             
             <div class="task-footer">
-              <span class="task-status" :class="getStatusClass(task.status)">
-                {{ getStatusText(task.status) }}
+              <span class="task-status" :class="getStatusClass(task.is_complete)">
+                {{ getStatusText(task.is_complete) }}
               </span>
               <span class="task-date">{{ formatDate(task.created_at) }}</span>
             </div>
@@ -123,7 +122,6 @@
               <label for="editTaskStatus">状态</label>
               <select id="editTaskStatus" v-model="editingTask.status">
                 <option value="pending">待处理</option>
-                <option value="in-progress">进行中</option>
                 <option value="completed">已完成</option>
               </select>
             </div>
@@ -219,7 +217,7 @@ const createTask = async () => {
         project_id: projectId.value,
         title: newTask.title,
         description: newTask.description,
-        status: newTask.status
+        is_complete: newTask.status === 'completed'
       }])
       .select()
     
@@ -256,7 +254,7 @@ const updateTask = async () => {
       .update({
         title: editingTask.value.title,
         description: editingTask.value.description,
-        status: editingTask.value.status
+        is_complete: editingTask.value.status === 'completed'
       })
       .eq('id', editingTask.value.id)
     
@@ -265,7 +263,12 @@ const updateTask = async () => {
     // 更新本地任务列表
     const index = tasks.value.findIndex(t => t.id === editingTask.value.id)
     if (index !== -1) {
-      tasks.value[index] = { ...editingTask.value }
+      tasks.value[index] = { 
+        ...tasks.value[index],
+        title: editingTask.value.title,
+        description: editingTask.value.description,
+        is_complete: editingTask.value.status === 'completed'
+      }
     }
     
     editingTask.value = null
@@ -306,7 +309,10 @@ const deleteTask = async (taskId) => {
 
 // 编辑任务
 const editTask = (task) => {
-  editingTask.value = { ...task }
+  editingTask.value = { 
+    ...task,
+    status: task.is_complete ? 'completed' : 'pending'
+  }
 }
 
 // 取消编辑
@@ -324,22 +330,19 @@ const cancelTask = () => {
   })
 }
 
+// 获取任务状态
+const getTaskStatus = (isComplete) => {
+  return isComplete ? 'completed' : 'pending'
+}
+
 // 获取状态样式类
-const getStatusClass = (status) => {
-  return {
-    'pending': 'status-pending',
-    'in-progress': 'status-in-progress',
-    'completed': 'status-completed'
-  }[status]
+const getStatusClass = (isComplete) => {
+  return isComplete ? 'status-completed' : 'status-pending'
 }
 
 // 获取状态文本
-const getStatusText = (status) => {
-  return {
-    'pending': '待处理',
-    'in-progress': '进行中',
-    'completed': '已完成'
-  }[status]
+const getStatusText = (isComplete) => {
+  return isComplete ? '已完成' : '待处理'
 }
 
 // 格式化日期
